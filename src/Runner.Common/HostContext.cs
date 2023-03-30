@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -220,12 +220,26 @@ namespace GitHub.Runner.Common
             var runnerFile = GetConfigFile(WellKnownConfigFile.Runner);
             if (File.Exists(runnerFile))
             {
-                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile);
+                var runnerSettings = IOUtil.LoadObject<RunnerSettings>(runnerFile, true);
                 _userAgents.Add(new ProductInfoHeaderValue("RunnerId", runnerSettings.AgentId.ToString(CultureInfo.InvariantCulture)));
                 _userAgents.Add(new ProductInfoHeaderValue("GroupId", runnerSettings.PoolId.ToString(CultureInfo.InvariantCulture)));
             }
 
             _userAgents.Add(new ProductInfoHeaderValue("CommitSHA", BuildConstants.Source.CommitHash));
+
+            var extraUserAgent = Environment.GetEnvironmentVariable("GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT");
+            if (!string.IsNullOrEmpty(extraUserAgent))
+            {
+                var extraUserAgentSplit = extraUserAgent.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                if (extraUserAgentSplit.Length != 2)
+                {
+                    _trace.Error($"GITHUB_ACTIONS_RUNNER_EXTRA_USER_AGENT is not in the format of 'name/version'.");
+                }
+
+                var extraUserAgentHeader = new ProductInfoHeaderValue(extraUserAgentSplit[0], extraUserAgentSplit[1]);
+                _trace.Info($"Adding extra user agent '{extraUserAgentHeader}' to all HTTP requests.");
+                _userAgents.Add(extraUserAgentHeader);
+            }
         }
 
         public string GetDirectory(WellKnownDirectory directory)

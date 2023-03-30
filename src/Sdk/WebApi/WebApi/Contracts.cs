@@ -46,7 +46,81 @@ namespace GitHub.Services.Results.Contracts
 
     [DataContract]
     [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
-    public class CreateStepSummaryMetadataResponse
+    public class GetSignedJobLogsURLRequest
+    {
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedJobLogsURLResponse
+    {
+        [DataMember]
+        public string LogsUrl;
+        [DataMember]
+        public string BlobStorageType;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedStepLogsURLRequest
+    {
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string WorkflowRunBackendId;
+        [DataMember]
+        public string StepBackendId;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class GetSignedStepLogsURLResponse
+    {
+        [DataMember]
+        public string LogsUrl;
+        [DataMember]
+        public string BlobStorageType;
+        [DataMember]
+        public long SoftSizeLimit;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class JobLogsMetadataCreate
+    {
+        [DataMember]
+        public string WorkflowRunBackendId;
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string UploadedAt;
+        [DataMember]
+        public long LineCount;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class StepLogsMetadataCreate
+    {
+        [DataMember]
+        public string WorkflowRunBackendId;
+        [DataMember]
+        public string WorkflowJobRunBackendId;
+        [DataMember]
+        public string StepBackendId;
+        [DataMember]
+        public string UploadedAt;
+        [DataMember]
+        public long LineCount;
+    }
+
+    [DataContract]
+    [JsonObject(NamingStrategyType = typeof(SnakeCaseNamingStrategy))]
+    public class CreateMetadataResponse
     {
         [DataMember]
         public bool Ok;

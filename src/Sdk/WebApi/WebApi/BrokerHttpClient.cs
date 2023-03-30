@@ -1,25 +1,28 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.DistributedTask.Pipelines;
+using GitHub.DistributedTask.WebApi;
 using GitHub.Services.Common;
 using GitHub.Services.OAuth;
 using GitHub.Services.WebApi;
+using Sdk.RSWebApi.Contracts;
 using Sdk.WebApi.WebApi;
 
-namespace GitHub.DistributedTask.WebApi
+namespace GitHub.Actions.RunService.WebApi
 {
-    [ResourceArea(TaskResourceIds.AreaId)]
-    public class RunServiceHttpClient : RawHttpClientBase
+    public class BrokerHttpClient : RawHttpClientBase
     {
-        public RunServiceHttpClient(
+        public BrokerHttpClient(
             Uri baseUrl,
             VssOAuthCredential credentials)
             : base(baseUrl, credentials)
         {
         }
 
-        public RunServiceHttpClient(
+        public BrokerHttpClient(
             Uri baseUrl,
             VssOAuthCredential credentials,
             RawClientHttpRequestSettings settings)
@@ -27,7 +30,7 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public RunServiceHttpClient(
+        public BrokerHttpClient(
             Uri baseUrl,
             VssOAuthCredential credentials,
             params DelegatingHandler[] handlers)
@@ -35,7 +38,7 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public RunServiceHttpClient(
+        public BrokerHttpClient(
             Uri baseUrl,
             VssOAuthCredential credentials,
             RawClientHttpRequestSettings settings,
@@ -44,7 +47,7 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public RunServiceHttpClient(
+        public BrokerHttpClient(
             Uri baseUrl,
             HttpMessageHandler pipeline,
             Boolean disposeHandler)
@@ -52,23 +55,29 @@ namespace GitHub.DistributedTask.WebApi
         {
         }
 
-        public Task<Pipelines.AgentJobRequestMessage> GetJobMessageAsync(
-            Uri requestUri,
-            string messageId,
-            CancellationToken cancellationToken = default)
+        public Task<TaskAgentMessage> GetRunnerMessageAsync(
+            string runnerVersion,
+            TaskAgentStatus? status,
+            CancellationToken cancellationToken = default
+        )
         {
-            HttpMethod httpMethod = new HttpMethod("POST");
-            var payload = new {
-                StreamID = messageId
-            };
+            var requestUri = new Uri(Client.BaseAddress, "message");
 
-            var payloadJson = JsonUtility.ToString(payload);
-            var requestContent = new StringContent(payloadJson, System.Text.Encoding.UTF8, "application/json");
-            return SendAsync<Pipelines.AgentJobRequestMessage>(
-                httpMethod,
-                additionalHeaders: null,
+            List<KeyValuePair<string, string>> queryParams = new List<KeyValuePair<string, string>>();
+
+            if (status != null)
+            {
+                queryParams.Add("status", status.Value.ToString());
+            }
+            if (runnerVersion != null)
+            {
+                queryParams.Add("runnerVersion", runnerVersion);
+            }
+
+            return SendAsync<TaskAgentMessage>(
+                new HttpMethod("GET"),
                 requestUri: requestUri,
-                content: requestContent,
+                queryParameters: queryParams,
                 cancellationToken: cancellationToken);
         }
     }

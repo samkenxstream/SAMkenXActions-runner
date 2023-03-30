@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using GitHub.Actions.RunService.WebApi;
 using GitHub.DistributedTask.Expressions2;
 using GitHub.DistributedTask.ObjectTemplating.Tokens;
 using GitHub.DistributedTask.Pipelines.ContextData;
@@ -80,7 +81,7 @@ namespace GitHub.Runner.Worker
         // logging
         long Write(string tag, string message);
         void QueueAttachFile(string type, string name, string filePath);
-        void QueueSummaryFile(string name, string filePath,  Guid stepRecordId);
+        void QueueSummaryFile(string name, string filePath, Guid stepRecordId);
 
         // timeline record update methods
         void Start(string currentOperation = null);
@@ -437,6 +438,17 @@ namespace GitHub.Runner.Worker
 
             PublishStepTelemetry();
 
+            var stepResult = new StepResult();
+            stepResult.ExternalID = _record.Id;
+            stepResult.Conclusion = _record.Result ?? TaskResult.Succeeded;
+            stepResult.Status = _record.State;
+            stepResult.Number = _record.Order;
+            stepResult.Name = _record.Name;
+            stepResult.StartedAt = _record.StartTime;
+            stepResult.CompletedAt = _record.FinishTime;
+
+            Global.StepsResult.Add(stepResult);
+
             if (Root != this)
             {
                 // only dispose TokenSource for step level ExecutionContext
@@ -710,6 +722,9 @@ namespace GitHub.Runner.Worker
             // ActionsStepTelemetry for entire job
             Global.StepsTelemetry = new List<ActionsStepTelemetry>();
 
+            // Steps results for entire job
+            Global.StepsResult = new List<StepResult>();
+
             // Job Outputs
             JobOutputs = new Dictionary<string, VariableValue>(StringComparer.OrdinalIgnoreCase);
 
@@ -856,8 +871,7 @@ namespace GitHub.Runner.Worker
             {
                 throw new FileNotFoundException($"Can't upload (name:{name}) file: {filePath}. File does not exist.");
             }
-
-            _jobServerQueue.QueueSummaryUpload(stepRecordId, name, filePath, deleteSource: false);
+            _jobServerQueue.QueueResultsUpload(stepRecordId, name, filePath, ChecksAttachmentType.StepSummary, deleteSource: false, finalize: true, firstBlock: true, totalLines: 0);
         }
 
         // Add OnMatcherChanged
