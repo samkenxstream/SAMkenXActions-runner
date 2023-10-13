@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using GitHub.DistributedTask.WebApi;
 using GitHub.Runner.Common;
+using GitHub.Runner.Common.Util;
 using GitHub.Runner.Listener.Configuration;
 using GitHub.Runner.Sdk;
 using GitHub.Services.Common;
@@ -123,8 +124,15 @@ namespace GitHub.Runner.Listener
                     Trace.Error("Catch exception during create session.");
                     Trace.Error(ex);
 
-                    if (ex is VssOAuthTokenRequestException && creds.Federated is VssOAuthCredential vssOAuthCred)
+                    if (ex is VssOAuthTokenRequestException vssOAuthEx && creds.Federated is VssOAuthCredential vssOAuthCred)
                     {
+                        // "invalid_client" means the runner registration has been deleted from the server.
+                        if (string.Equals(vssOAuthEx.Error, "invalid_client", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
+                            return false;
+                        }
+
                         // Check whether we get 401 because the runner registration already removed by the service.
                         // If the runner registration get deleted, we can't exchange oauth token.
                         Trace.Error("Test oauth app registration.");
@@ -132,7 +140,7 @@ namespace GitHub.Runner.Listener
                         var authError = await oauthTokenProvider.ValidateCredentialAsync(token);
                         if (string.Equals(authError, "invalid_client", StringComparison.OrdinalIgnoreCase))
                         {
-                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure.");
+                            _term.WriteError("Failed to create a session. The runner registration has been deleted from the server, please re-configure. Runner registrations are automatically deleted for runners that have not connected to the service recently.");
                             return false;
                         }
                     }
@@ -212,6 +220,8 @@ namespace GitHub.Runner.Listener
                                                                 _lastMessageId,
                                                                 runnerStatus,
                                                                 BuildConstants.RunnerPackage.Version,
+                                                                VarUtil.OS,
+                                                                VarUtil.OSArchitecture,
                                                                 _getMessagesTokenSource.Token);
 
                     // Decrypt the message body if the session is using encryption
@@ -245,7 +255,7 @@ namespace GitHub.Runner.Listener
                     _accessTokenRevoked = true;
                     throw;
                 }
-                catch (AccessDeniedException e) when (e.InnerException is InvalidTaskAgentVersionException)
+                catch (AccessDeniedException e) when (e.ErrorCode == 1)
                 {
                     throw;
                 }
